@@ -13,6 +13,16 @@ import type { PendingExportSave } from "./exportPersistence";
 import type { useExportSession } from "./useExportSession";
 import type { useExportSettings } from "./useExportSettings";
 
+export type ExportOutcome = { success: true; path: string } | { success: false; error: string };
+
+export type ExportRunOptions = {
+	destination?: "download" | "share";
+	/** Save straight to this path instead of asking with a save dialog. */
+	outputPath?: string;
+	/** Called once with the final result of this export run. */
+	onOutcome?: (outcome: ExportOutcome) => void;
+};
+
 export type ExportRunnerInput = {
 	videoPath: string | null;
 	videoPlaybackRef: RefObject<VideoPlaybackRef | null>;

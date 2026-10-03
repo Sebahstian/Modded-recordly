@@ -258,5 +258,12 @@
 		"title": "更新",
 		"experimental": "實驗性更新",
 		"saveFailed": "無法變更更新頻道。"
+	},
+	"automation": {
+		"title": "Claude & automation",
+		"enable": "Allow local API control",
+		"description": "Lets Claude (through the Recordly MCP server) edit and export the open project. Only apps on this computer that can read Recordly's settings folder can connect.",
+		"running": "Running on port {{port}}",
+		"saveFailed": "Failed to change the local API setting."
 	}
 }

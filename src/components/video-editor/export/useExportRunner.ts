@@ -15,7 +15,9 @@ import {
 	writeSmokeExportReport,
 } from "./exportPersistence";
 import {
+	type ExportOutcome,
 	type ExportRunnerInput,
+	type ExportRunOptions,
 	showExportErrorToast,
 	useExportSuccessToast,
 } from "./exportRunnerSupport";
@@ -28,7 +30,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 	const handleExport = useCallback(
 		async (
 			settings: ExportSettings,
-			options?: { destination?: "download" | "share" },
+			options?: ExportRunOptions,
 		): Promise<string | undefined> => {
 			const {
 				videoPath,
@@ -75,14 +77,24 @@ export function useExportRunner(input: ExportRunnerInput) {
 			} = exportSession;
 			if (!videoPath) {
 				toast.error("No video loaded");
+				options?.onOutcome?.({ success: false, error: "No video loaded" });
 				return;
 			}
 
 			const video = videoPlaybackRef.current?.video;
 			if (!video) {
 				toast.error("Video not ready");
+				options?.onOutcome?.({ success: false, error: "Video not ready" });
 				return;
 			}
+			// An explicit destination (automation API) skips the save dialog, like smoke exports.
+			const targetOutputPath =
+				options?.outputPath ??
+				(smokeExportConfig.enabled ? smokeExportConfig.outputPath : null);
+			let outcome: ExportOutcome = {
+				success: false,
+				error: "Export was canceled before it finished",
+			};
 
 			const exportRunId = exportRunIdRef.current + 1;
 			exportRunIdRef.current = exportRunId;
@@ -178,7 +190,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 						const { saveResult, pendingSave } = await saveExportBlob(
 							result.blob,
 							fileName,
-							smokeExportConfig.enabled ? smokeExportConfig.outputPath : null,
+							targetOutputPath,
 						);
 						if (exportWasCancelled()) {
 							await discardCancelledTemp(pendingSave);
@@ -199,6 +211,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 									`[smoke-export] Completed in ${Math.round(performance.now() - smokeExportStartedAt)}ms (${saveResult.path})`,
 								);
 							}
+							outcome = { success: true, path: saveResult.path };
 							showExportSuccessToast(saveResult.path);
 							setExportedFilePath(saveResult.path);
 							if (smokeExportConfig.enabled) {
@@ -206,6 +219,10 @@ export function useExportRunner(input: ExportRunnerInput) {
 								return;
 							}
 						} else {
+							outcome = {
+								success: false,
+								error: saveResult.message || "Failed to save GIF",
+							};
 							setExportError(saveResult.message || "Failed to save GIF");
 							toast.error(saveResult.message || "Failed to save GIF");
 							if (smokeExportConfig.enabled) {
@@ -214,6 +231,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 							}
 						}
 					} else {
+						outcome = { success: false, error: result.error || "GIF export failed" };
 						setExportError(result.error || "GIF export failed");
 						toast.error(result.error || "GIF export failed");
 						if (smokeExportConfig.enabled) {
@@ -379,10 +397,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 							saveResult = await window.electronAPI.finalizeExportedVideo({
 								tempPath: result.tempFilePath,
 								fileName,
-								outputPath:
-									smokeExportConfig.enabled && smokeExportConfig.outputPath
-										? smokeExportConfig.outputPath
-										: null,
+								outputPath: targetOutputPath || null,
 								captionSidecar: sidecarForThisExport,
 							});
 							if (exportWasCancelled()) {
@@ -405,7 +420,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 							const blobSave = await saveExportBlob(
 								result.blob,
 								fileName,
-								smokeExportConfig.enabled ? smokeExportConfig.outputPath : null,
+								targetOutputPath,
 								sidecarForThisExport,
 							);
 							if (exportWasCancelled()) {
@@ -463,6 +478,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 									`[smoke-export] Completed in ${Math.round(performance.now() - smokeExportStartedAt)}ms (${saveResult.path})`,
 								);
 							}
+							outcome = { success: true, path: saveResult.path };
 							showExportSuccessToast(saveResult.path);
 							setExportedFilePath(saveResult.path);
 							if (smokeExportConfig.enabled) {
@@ -485,6 +501,10 @@ export function useExportRunner(input: ExportRunnerInput) {
 									metrics: result.metrics,
 								});
 							}
+							outcome = {
+								success: false,
+								error: saveResult.message || "Failed to save video",
+							};
 							setExportError(saveResult.message || "Failed to save video");
 							showExportErrorToast(saveResult.message || "Failed to save video");
 							// Keep the pending-save entry so the user can retry without
@@ -517,6 +537,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 								metrics: result.metrics,
 							});
 						}
+						outcome = { success: false, error: result.error || "Export failed" };
 						setExportError(result.error || "Export failed");
 						showExportErrorToast(result.error || "Export failed");
 						keepExportDialogOpen = options?.destination !== "share";
@@ -536,6 +557,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 				if (exportWasCancelled()) return;
 				console.error("Export error:", error);
 				const errorMessage = error instanceof Error ? error.message : "Unknown error";
+				outcome = { success: false, error: errorMessage };
 				if (smokeExportConfig.enabled) {
 					await writeSmokeExportReport(smokeExportConfig.outputPath, {
 						success: false,
@@ -555,6 +577,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 					window.close();
 				}
 			} finally {
+				options?.onOutcome?.(outcome);
 				if (exportWasExplicitlyCancelled() && exportRunIdRef.current === exportRunId + 1) {
 					video.currentTime = restoreTime;
 					if (wasPlaying) {

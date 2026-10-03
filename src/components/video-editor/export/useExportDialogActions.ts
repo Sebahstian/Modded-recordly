@@ -1,8 +1,14 @@
 import { type RefObject, useCallback } from "react";
 import { toast } from "@/components/ui/toast";
-import type { ExportFormat, ExportSettings } from "@/lib/exporter";
+import type {
+	ExportFormat,
+	ExportMp4FrameRate,
+	ExportQuality,
+	ExportSettings,
+} from "@/lib/exporter";
 import { resolveExportStartSettings, resolveShareExportSettings } from "../exportStartSettings";
 import type { VideoPlaybackRef } from "../VideoPlayback";
+import type { ExportOutcome, ExportRunOptions } from "./exportRunnerSupport";
 import type { useExportSession } from "./useExportSession";
 import type { useExportSettings } from "./useExportSettings";
 
@@ -17,7 +23,7 @@ type UseExportDialogActionsInput = {
 	session: ExportSession;
 	handleExport: (
 		settings: ExportSettings,
-		options?: { destination?: "download" | "share" },
+		options?: ExportRunOptions,
 	) => Promise<string | undefined>;
 	showExportSuccessToast: (filePath: string) => void;
 };
@@ -101,6 +107,43 @@ export function useExportDialogActions({
 		return handleExport(resolveShareExportSettings(resolvedSettings), { destination: "share" });
 	}, [resolveCurrentSettings, session, handleExport]);
 
+	/** Export without the save dialog (automation API). Returns why it could not start, or null. */
+	const startAutomatedExport = useCallback(
+		(request: {
+			format: ExportFormat;
+			outputPath: string;
+			quality?: ExportQuality;
+			fps?: ExportMp4FrameRate;
+			onOutcome: (outcome: ExportOutcome) => void;
+		}): { code: "busy" | "not_ready"; message: string } | null => {
+			if (session.isExporting) {
+				return { code: "busy", message: "An export is already running" };
+			}
+			const resolvedSettings = resolveCurrentSettings(request.format);
+			if (!resolvedSettings) {
+				return { code: "not_ready", message: "The video is not ready to export yet" };
+			}
+			const exportSettings: ExportSettings =
+				request.format === "mp4"
+					? {
+							...resolvedSettings,
+							...(request.quality ? { quality: request.quality } : {}),
+							...(request.fps ? { mp4FrameRate: request.fps } : {}),
+						}
+					: resolvedSettings;
+			session.setExportError(null);
+			session.setExportedFilePath(undefined);
+			session.setShowExportDropdown(true);
+			void handleExport(exportSettings, {
+				destination: "download",
+				outputPath: request.outputPath,
+				onOutcome: request.onOutcome,
+			});
+			return null;
+		},
+		[resolveCurrentSettings, session, handleExport],
+	);
+
 	const handleCancelExport = useCallback(() => {
 		if (!session.isExporting) return;
 		session.cancelledExportRunIdRef.current = session.exportRunIdRef.current;
@@ -180,6 +223,7 @@ export function useExportDialogActions({
 		handleOpenExportDropdown,
 		handleStartExportFromDropdown,
 		prepareExportForShare,
+		startAutomatedExport,
 		handleCancelExport,
 		handleExportDropdownClose,
 		handleRetrySaveExport,
