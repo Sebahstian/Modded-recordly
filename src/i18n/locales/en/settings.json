@@ -5,6 +5,13 @@
 		"experimentalDescription": "You've opted into experimental updates so you have the choice to test the latest update of Recordly before it's widely available.",
 		"saveFailed": "Failed to change the update channel."
 	},
+	"automation": {
+		"title": "Claude & automation",
+		"enable": "Allow local API control",
+		"description": "Lets Claude (through the Recordly MCP server) edit and export the open project. Only apps on this computer that can read Recordly's settings folder can connect.",
+		"running": "Running on port {{port}}",
+		"saveFailed": "Failed to change the local API setting."
+	},
 	"zoom": {
 		"level": "Zoom Level",
 		"selectRegion": "Select a zoom region to adjust",

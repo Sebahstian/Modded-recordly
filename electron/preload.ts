@@ -908,6 +908,34 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setExperimentalUpdatesEnabled: (enabled: boolean) => {
 		return ipcRenderer.invoke("set-experimental-updates-enabled", enabled);
 	},
+	getAutomationApiStatus: () => {
+		return ipcRenderer.invoke("get-automation-api-status");
+	},
+	setAutomationApiEnabled: (enabled: boolean) => {
+		return ipcRenderer.invoke("set-automation-api-enabled", enabled);
+	},
+	onAutomationRequest: (
+		callback: (request: { id: string; method: string; params: unknown }) => void,
+	) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			request: { id: string; method: string; params: unknown },
+		) => callback(request);
+		ipcRenderer.on("automation-request", listener);
+		ipcRenderer.send("automation-bridge-ready");
+		return () => {
+			ipcRenderer.removeListener("automation-request", listener);
+			ipcRenderer.send("automation-bridge-gone");
+		};
+	},
+	sendAutomationResponse: (response: {
+		id: string;
+		ok: boolean;
+		result?: unknown;
+		error?: { message: string; code?: string };
+	}) => {
+		ipcRenderer.send("automation-response", response);
+	},
 	previewUpdateToast: () => {
 		return ipcRenderer.invoke("preview-update-toast");
 	},

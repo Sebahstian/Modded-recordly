@@ -58,6 +58,14 @@ interface UpdateToastState {
 	primaryAction?: "install-and-restart" | "retry-check";
 }
 
+interface AutomationApiStatus {
+	enabled: boolean;
+	running: boolean;
+	port: number | null;
+	discoveryFile: string;
+	error?: string;
+}
+
 interface UpdateStatusSummary {
 	status: "idle" | "checking" | "up-to-date" | "available" | "downloading" | "ready" | "error";
 	currentVersion: string;
@@ -908,6 +916,19 @@ interface Window {
 			enabled: boolean;
 			error?: string;
 		}>;
+		getAutomationApiStatus: () => Promise<AutomationApiStatus>;
+		setAutomationApiEnabled: (
+			enabled: boolean,
+		) => Promise<AutomationApiStatus & { success: boolean; error?: string }>;
+		onAutomationRequest: (
+			callback: (request: { id: string; method: string; params: unknown }) => void,
+		) => () => void;
+		sendAutomationResponse: (response: {
+			id: string;
+			ok: boolean;
+			result?: unknown;
+			error?: { message: string; code?: string };
+		}) => void;
 		previewUpdateToast: () => Promise<{ success: boolean }>;
 		checkForAppUpdates: () => Promise<{ success: boolean; logPath: string }>;
 		onUpdateToastStateChanged: (

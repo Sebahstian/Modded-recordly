@@ -273,6 +273,10 @@ Inside the editor you can:
 
 Save your work anytime as a `.recordly` project.
 
+### Edit with Claude
+
+Recordly can also be edited by Claude (Claude Code or Claude Desktop) through a local MCP server: ask for cuts, zooms, callouts, subtitles, styling and exports in plain language and watch them land in the editor. See [docs/claude-mcp.md](docs/claude-mcp.md) for setup.
+
 ## Export
 
 Export options include:

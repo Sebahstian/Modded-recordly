@@ -258,5 +258,12 @@
 		"title": "Updates",
 		"experimental": "Experimentelle Updates",
 		"saveFailed": "Update-Kanal konnte nicht geändert werden."
+	},
+	"automation": {
+		"title": "Claude & automation",
+		"enable": "Allow local API control",
+		"description": "Lets Claude (through the Recordly MCP server) edit and export the open project. Only apps on this computer that can read Recordly's settings folder can connect.",
+		"running": "Running on port {{port}}",
+		"saveFailed": "Failed to change the local API setting."
 	}
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { useAutomationBridge } from "./automation/useAutomationBridge";
 import { loadEditorPreferences } from "./editorPreferences";
 import { useEditorExportController } from "./export/useEditorExportController";
 import { useExportDimensions } from "./export/useExportDimensions";
@@ -342,6 +343,29 @@ export default function VideoEditor() {
 		experimentalNvidiaCudaExport,
 		nvidiaCudaExportAvailable,
 		remountPreview,
+	});
+	useAutomationBridge({
+		project,
+		appearance,
+		timeline,
+		aspectRatio,
+		setAspectRatio,
+		duration,
+		currentTime,
+		videoPlaybackRef,
+		whisperExecutablePath,
+		whisperModelPath,
+		downloadedWhisperModelPath,
+		projectController,
+		exportController,
+		exportSession,
+		refs: {
+			nextZoomIdRef,
+			nextClipIdRef,
+			nextAudioIdRef,
+			nextAnnotationIdRef,
+			nextAnnotationZIndexRef,
+		},
 	});
 	const previewAspectRatioValue = getAspectRatioValue(
 		aspectRatio,

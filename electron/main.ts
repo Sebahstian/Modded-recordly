@@ -28,6 +28,7 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
+import { initAutomationApi, shutdownAutomationApi } from "./automation/index";
 import { ensureMediaServer } from "./mediaServer";
 import { hardenWebContentsNavigation, shouldHardenWebContentsType } from "./navigationPolicy";
 import { shouldGrantDisplayCapture, shouldGrantMediaPermission } from "./permissionPolicy";
@@ -417,6 +418,18 @@ function focusOrCreateMainWindow() {
 
 function isEditorWindow(window: BrowserWindow) {
 	return window.webContents.getURL().includes("windowType=editor");
+}
+
+/** Editor windows for the automation API, focused window first. */
+function getAutomationEditorWindows(): BrowserWindow[] {
+	const focused = BrowserWindow.getFocusedWindow();
+	return BrowserWindow.getAllWindows()
+		.filter((window) => !window.isDestroyed() && isEditorWindow(window))
+		.sort(
+			(left, right) =>
+				Number(right === focused) - Number(left === focused) ||
+				Number(right === mainWindow) - Number(left === mainWindow),
+		);
 }
 
 function sendEditorMenuAction(
@@ -883,6 +896,7 @@ app.on("before-quit", () => {
 	showCursor();
 	cleanupNativeVideoExportSessions();
 	void cleanupAllExportStreams();
+	void shutdownAutomationApi();
 });
 
 app.on("window-all-closed", () => {
@@ -1043,6 +1057,15 @@ app.whenReady().then(async () => {
 			}
 		},
 	);
+
+	if (!IS_SMOKE_EXPORT) {
+		await initAutomationApi({
+			getEditorWindows: getAutomationEditorWindows,
+			openEditorWindow: () => {
+				createEditorWindowWrapper();
+			},
+		});
+	}
 
 	if (IS_SMOKE_EXPORT || process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT) {
 		await logSmokeExportGpuDiagnostics();

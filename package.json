@@ -46,7 +46,8 @@
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"test:ui": "playwright test",
-		"dev:ui": "vite --mode ui --host 127.0.0.1"
+		"dev:ui": "vite --mode ui --host 127.0.0.1",
+		"mcp:build": "npm --prefix mcp ci && npm --prefix mcp run build"
 	},
 	"dependencies": {
 		"@phosphor-icons/react": "^2.1.10",

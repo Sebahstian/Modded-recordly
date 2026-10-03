@@ -1015,6 +1015,10 @@ export function SettingsPanel({
 	);
 	const [experimentalUpdatesEnabled, setExperimentalUpdatesEnabled] = useState(false);
 	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
+	const [automationApiStatus, setAutomationApiStatus] = useState<AutomationApiStatus | null>(
+		null,
+	);
+	const [savingAutomationApi, setSavingAutomationApi] = useState(false);
 	const { openConfig: openShortcutsConfig } = useShortcuts();
 	const [internalActiveEffectSection] = useState<EditorEffectSection>("scene");
 	const activeEffectSection = activeEffectSectionProp ?? internalActiveEffectSection;
@@ -1049,6 +1053,47 @@ export function SettingsPanel({
 			cancelled = true;
 		};
 	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+		void window.electronAPI
+			.getAutomationApiStatus?.()
+			.then((status) => {
+				if (!cancelled) setAutomationApiStatus(status);
+			})
+			.catch((error) => {
+				console.error("Failed to load local API status:", error);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const updateAutomationApiPreference = async (enabled: boolean) => {
+		const previous = automationApiStatus;
+		setAutomationApiStatus((current) => (current ? { ...current, enabled } : current));
+		setSavingAutomationApi(true);
+		try {
+			const result = await window.electronAPI.setAutomationApiEnabled(enabled);
+			setAutomationApiStatus(result);
+			if (!result.success) {
+				toast.error(
+					result.error ||
+						tSettings(
+							"automation.saveFailed",
+							"Failed to change the local API setting.",
+						),
+				);
+			}
+		} catch (error) {
+			setAutomationApiStatus(previous);
+			toast.error(
+				`${tSettings("automation.saveFailed", "Failed to change the local API setting.")} ${String(error)}`,
+			);
+		} finally {
+			setSavingAutomationApi(false);
+		}
+	};
 
 	const updateExperimentalUpdatesPreference = async (enabled: boolean) => {
 		const previousValue = experimentalUpdatesEnabled;
@@ -2326,6 +2371,48 @@ export function SettingsPanel({
 									)}
 								/>
 							</SettingsRow>
+							{automationApiStatus && (
+								<>
+									<SectionLabel>
+										{tSettings("automation.title", "Claude & automation")}
+									</SectionLabel>
+									<SettingsRow
+										title={tSettings(
+											"automation.enable",
+											"Allow local API control",
+										)}
+										description={
+											automationApiStatus.running && automationApiStatus.port
+												? `${tSettings(
+														"automation.description",
+														"Lets Claude (through the Recordly MCP server) edit and export the open project.",
+													)} ${tSettings(
+														"automation.running",
+														"Running on port {{port}}",
+														{
+															port: automationApiStatus.port,
+														},
+													)}`
+												: tSettings(
+														"automation.description",
+														"Lets Claude (through the Recordly MCP server) edit and export the open project.",
+													)
+										}
+									>
+										<Switch
+											checked={automationApiStatus.enabled}
+											disabled={savingAutomationApi}
+											onCheckedChange={(enabled) =>
+												void updateAutomationApiPreference(enabled)
+											}
+											aria-label={tSettings(
+												"automation.enable",
+												"Allow local API control",
+											)}
+										/>
+									</SettingsRow>
+								</>
+							)}
 						</section>
 					)}
 				</SettingsCategory>

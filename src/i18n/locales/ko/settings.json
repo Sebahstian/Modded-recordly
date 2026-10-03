@@ -258,5 +258,12 @@
 		"title": "업데이트",
 		"experimental": "실험적 업데이트",
 		"saveFailed": "업데이트 채널을 변경하지 못했습니다."
+	},
+	"automation": {
+		"title": "Claude & automation",
+		"enable": "Allow local API control",
+		"description": "Lets Claude (through the Recordly MCP server) edit and export the open project. Only apps on this computer that can read Recordly's settings folder can connect.",
+		"running": "Running on port {{port}}",
+		"saveFailed": "Failed to change the local API setting."
 	}
 }
